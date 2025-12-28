@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PinEntry } from '@/components/PinEntry';
 import { ClipboardView } from '@/components/ClipboardView';
-
-const STORAGE_KEY = 'clipsync-pin';
+import { STORAGE_KEY } from '@/lib/constants';
 
 export default function Home() {
   const [pin, setPin] = useState<string | null>(null);

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, KeyboardEvent } from 'react';
 import { Input } from '@/components/ui/input';
+import { APP_NAME } from '@/lib/constants';
 
 interface PinEntryProps {
   onPinComplete: (pin: string) => void;
@@ -61,7 +62,7 @@ export function PinEntry({ onPinComplete }: PinEntryProps) {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">
-            ClipSync
+            {APP_NAME}
           </h1>
           <p className="text-muted-foreground">
             Enter your 4-digit room PIN

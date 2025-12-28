@@ -18,6 +18,7 @@ import {
 import { PasteInput } from './PasteInput';
 import { PasteList } from './PasteList';
 import { supabase } from '@/lib/supabase';
+import { APP_NAME } from '@/lib/constants';
 import type { Paste } from '@/types';
 
 interface ClipboardViewProps {
@@ -156,7 +157,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
       <header className="border-b sticky top-0 bg-background z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="font-semibold">ClipSync</h1>
+            <h1 className="font-semibold">{APP_NAME}</h1>
             <p className="text-sm text-muted-foreground">
               Room: <span className="font-mono">{pin}</span>
             </p>

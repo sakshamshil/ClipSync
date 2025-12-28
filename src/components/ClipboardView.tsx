@@ -96,6 +96,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
 
       if (deleteError) throw deleteError;
 
+      setPastes([]); // Update UI immediately
       toast.success('All pastes cleared!');
     } catch {
       toast.error('Failed to clear pastes');

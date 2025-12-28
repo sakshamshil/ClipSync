@@ -86,6 +86,23 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
     }
   };
 
+  // Delete single paste
+  const deletePaste = async (id: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('pastes')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+
+      setPastes((prev) => prev.filter((p) => p.id !== id)); // Update UI immediately
+      toast.success('Paste deleted');
+    } catch {
+      toast.error('Failed to delete paste');
+    }
+  };
+
   // Clear all pastes
   const clearAll = async () => {
     try {
@@ -201,7 +218,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
           <h2 className="text-sm font-medium text-muted-foreground mb-4">
             Recent Pastes
           </h2>
-          <PasteList pastes={pastes} loading={loading} onCopy={copyToClipboard} />
+          <PasteList pastes={pastes} loading={loading} onCopy={copyToClipboard} onDelete={deletePaste} />
         </div>
       </main>
     </div>

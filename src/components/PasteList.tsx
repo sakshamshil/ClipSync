@@ -9,12 +9,13 @@ interface PasteListProps {
   pastes: Paste[];
   loading: boolean;
   onCopy: (content: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const INITIAL_SHOW = 5;
 const LOAD_MORE_COUNT = 5;
 
-export function PasteList({ pastes, loading, onCopy }: PasteListProps) {
+export function PasteList({ pastes, loading, onCopy, onDelete }: PasteListProps) {
   const [showCount, setShowCount] = useState(INITIAL_SHOW);
 
   const visiblePastes = pastes.slice(0, showCount);
@@ -47,7 +48,7 @@ export function PasteList({ pastes, loading, onCopy }: PasteListProps) {
   return (
     <div className="space-y-3">
       {visiblePastes.map((paste) => (
-        <PasteItem key={paste.id} paste={paste} onCopy={onCopy} />
+        <PasteItem key={paste.id} paste={paste} onCopy={onCopy} onDelete={onDelete} />
       ))}
 
       {hasMore && (

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PinEntry } from '@/components/PinEntry';
 import { ClipboardView } from '@/components/ClipboardView';
-import { STORAGE_KEY } from '@/lib/constants';
+import { STORAGE_KEY, PIN_LENGTH } from '@/lib/constants';
 
 export default function Home() {
   const [pin, setPin] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export default function Home() {
   // Check localStorage on mount
   useEffect(() => {
     const storedPin = localStorage.getItem(STORAGE_KEY);
-    if (storedPin && storedPin.length === 4) {
+    if (storedPin && storedPin.length === PIN_LENGTH) {
       setPin(storedPin);
     }
     setIsLoading(false);

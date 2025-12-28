@@ -2,14 +2,14 @@
 
 import { useRef, useState, useEffect, KeyboardEvent } from 'react';
 import { Input } from '@/components/ui/input';
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, APP_TAGLINE, PIN_LENGTH } from '@/lib/constants';
 
 interface PinEntryProps {
   onPinComplete: (pin: string) => void;
 }
 
 export function PinEntry({ onPinComplete }: PinEntryProps) {
-  const [digits, setDigits] = useState<string[]>(['', '', '', '']);
+  const [digits, setDigits] = useState<string[]>(Array(PIN_LENGTH).fill(''));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -26,14 +26,14 @@ export function PinEntry({ onPinComplete }: PinEntryProps) {
     setDigits(newDigits);
 
     // Auto-focus next input
-    if (digit && index < 3) {
+    if (digit && index < PIN_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Check if PIN is complete (auto-enter on 4th digit)
-    if (digit && index === 3) {
+    // Check if PIN is complete (auto-enter on last digit)
+    if (digit && index === PIN_LENGTH - 1) {
       const pin = newDigits.join('');
-      if (pin.length === 4) {
+      if (pin.length === PIN_LENGTH) {
         onPinComplete(pin);
       }
     }
@@ -48,9 +48,9 @@ export function PinEntry({ onPinComplete }: PinEntryProps) {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, PIN_LENGTH);
 
-    if (pastedData.length === 4) {
+    if (pastedData.length === PIN_LENGTH) {
       const newDigits = pastedData.split('');
       setDigits(newDigits);
       onPinComplete(pastedData);
@@ -59,17 +59,17 @@ export function PinEntry({ onPinComplete }: PinEntryProps) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             {APP_NAME}
           </h1>
           <p className="text-muted-foreground">
-            Enter your 4-digit room PIN
+            {APP_TAGLINE}
           </p>
         </div>
 
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-2">
           {digits.map((digit, index) => (
             <Input
               key={index}
@@ -81,15 +81,20 @@ export function PinEntry({ onPinComplete }: PinEntryProps) {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
-              className="h-16 w-14 text-center text-2xl font-mono"
+              className="h-14 w-12 text-center text-2xl font-mono"
               autoComplete="off"
             />
           ))}
         </div>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Room opens automatically when PIN is entered
-        </p>
+        <div className="text-center space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Enter any {PIN_LENGTH}-digit PIN to create or join a room
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            Same PIN = Same clipboard
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Copy, Check, Trash2, ExternalLink, Link as LinkIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { toast } from 'sonner';
 import type { Paste } from '@/types';
 
 interface PasteItemProps {
@@ -15,6 +16,7 @@ interface PasteItemProps {
 
 export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
   const [copied, setCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -28,10 +30,26 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
   const handleCopyImageUrl = async () => {
     try {
       await navigator.clipboard.writeText(paste.content);
+      setUrlCopied(true);
+      toast.success('Image URL copied!');
+      setTimeout(() => setUrlCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  };
+
+  const handleCopyImage = async () => {
+    try {
+      const response = await fetch(paste.content);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
       setImageCopied(true);
+      toast.success('Image copied! You can paste it directly into other apps.');
       setTimeout(() => setImageCopied(false), 2000);
     } catch {
-      // Silent fail
+      toast.error('Failed to copy image. Try copying the URL instead.');
     }
   };
 
@@ -99,14 +117,27 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleCopyImageUrl}
+                  onClick={handleCopyImage}
                   className="h-9 w-9"
-                  title="Copy image URL"
+                  title="Copy image (paste into apps)"
                 >
                   {imageCopied ? (
                     <Check className="h-4 w-4 text-green-500" />
                   ) : (
                     <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyImageUrl}
+                  className="h-9 w-9"
+                  title="Copy image URL"
+                >
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <LinkIcon className="h-4 w-4" />
                   )}
                 </Button>
                 <Button

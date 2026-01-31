@@ -15,12 +15,24 @@ interface PasteItemProps {
 
 export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
   const [copied, setCopied] = useState(false);
+  const [imageCopied, setImageCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleCopy = async () => {
     await onCopy(paste.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyImageUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(paste.content);
+      setImageCopied(true);
+      setTimeout(() => setImageCopied(false), 2000);
+    } catch {
+      // Silent fail
+    }
   };
 
   const handleDelete = async () => {
@@ -49,20 +61,29 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             {isImage ? (
-              <a
-                href={paste.content}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={paste.content}
-                  alt="Uploaded image"
-                  className="max-h-[200px] w-auto object-cover rounded-md"
-                  loading="lazy"
-                />
-              </a>
+              imageError ? (
+                <div className="max-h-[200px] w-full bg-muted rounded-md flex flex-col items-center justify-center p-8 text-muted-foreground">
+                  <ExternalLink className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">Image failed to load</p>
+                  <p className="text-xs mt-1">It may have been deleted from storage</p>
+                </div>
+              ) : (
+                <a
+                  href={paste.content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={paste.content}
+                    alt="Uploaded image"
+                    className="max-h-[200px] w-auto object-cover rounded-md"
+                    loading="lazy"
+                    onError={() => setImageError(true)}
+                  />
+                </a>
+              )
             ) : (
               <p className="text-sm whitespace-pre-wrap break-words">
                 {paste.content}
@@ -74,15 +95,30 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
           </div>
           <div className="flex shrink-0">
             {isImage ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => window.open(paste.content, '_blank')}
-                className="h-9 w-9"
-                title="Open in new tab"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyImageUrl}
+                  className="h-9 w-9"
+                  title="Copy image URL"
+                >
+                  {imageCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => window.open(paste.content, '_blank')}
+                  className="h-9 w-9"
+                  title="Open in new tab"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </>
             ) : (
               <Button
                 variant="ghost"

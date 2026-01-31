@@ -70,7 +70,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [pin, copyToClipboard]);
+  }, [pin]);
 
   // Add new paste
   const addPaste = async (content: string, type: 'text' | 'image') => {
@@ -237,6 +237,15 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
             <p className="text-sm text-muted-foreground">
               Room: <span className="font-mono">{pin}</span>
             </p>
+            {pastes.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {(() => {
+                  const textCount = pastes.filter((p) => p.type === 'text').length;
+                  const imageCount = pastes.filter((p) => p.type === 'image').length;
+                  return `${pastes.length} ${pastes.length === 1 ? 'paste' : 'pastes'}${textCount > 0 ? ` · ${textCount} text` : ''}${imageCount > 0 ? ` · ${imageCount} ${imageCount === 1 ? 'image' : 'images'}` : ''}`;
+                })()}
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <DropdownMenu>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { LogOut, Trash2, Download } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,7 +39,6 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
   const [pastes, setPastes] = useState<Paste[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const hasAutoCopied = useRef(false);
 
   // Copy to clipboard helper
   const copyToClipboard = useCallback(async (content: string, showToast = true) => {
@@ -65,13 +64,6 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
       if (fetchError) throw fetchError;
 
       setPastes(data || []);
-
-      // Auto-copy latest entry on first load
-      if (!hasAutoCopied.current && data && data.length > 0) {
-        hasAutoCopied.current = true;
-        await copyToClipboard(data[0].content, false);
-        toast.success('Latest item copied to clipboard!');
-      }
     } catch (err) {
       setError('Failed to load pastes');
       console.error(err);

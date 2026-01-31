@@ -13,6 +13,7 @@ export default function Home() {
   useEffect(() => {
     const storedPin = localStorage.getItem(STORAGE_KEY);
     if (storedPin && storedPin.length === PIN_LENGTH) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPin(storedPin);
     }
     setIsLoading(false);

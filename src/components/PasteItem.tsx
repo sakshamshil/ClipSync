@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check, Trash2 } from 'lucide-react';
+import { Copy, Check, Trash2, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,31 +41,62 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
     addSuffix: true,
   });
 
+  const isImage = paste.type === 'image';
+
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm whitespace-pre-wrap break-words">
-              {paste.content}
-            </p>
+            {isImage ? (
+              <a
+                href={paste.content}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={paste.content}
+                  alt="Uploaded image"
+                  className="max-h-[200px] w-auto object-cover rounded-md"
+                  loading="lazy"
+                />
+              </a>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap break-words">
+                {paste.content}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-2">
               {timeAgo}
             </p>
           </div>
           <div className="flex shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopy}
-              className="h-9 w-9"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
+            {isImage ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => window.open(paste.content, '_blank')}
+                className="h-9 w-9"
+                title="Open in new tab"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopy}
+                className="h-9 w-9"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

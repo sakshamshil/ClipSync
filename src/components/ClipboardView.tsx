@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { LogOut, Trash2 } from 'lucide-react';
+import { LogOut, Trash2, Download } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PasteInput } from './PasteInput';
 import { PasteList } from './PasteList';
-import { supabase } from '@/lib/supabase';
+import { supabase, deleteImage, deleteRoomImages } from '@/lib/supabase';
 import { APP_NAME } from '@/lib/constants';
 import type { Paste } from '@/types';
 
@@ -72,23 +81,33 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
   }, [pin, copyToClipboard]);
 
   // Add new paste
-  const addPaste = async (content: string) => {
+  const addPaste = async (content: string, type: 'text' | 'image') => {
     try {
       const { error: insertError } = await supabase
         .from('pastes')
-        .insert({ room_code: pin, content });
+        .insert({ room_code: pin, content, type });
 
       if (insertError) throw insertError;
 
-      toast.success('Paste added!');
+      toast.success(type === 'image' ? 'Image uploaded!' : 'Paste added!');
     } catch {
-      toast.error('Failed to add paste');
+      toast.error(type === 'image' ? 'Failed to upload image' : 'Failed to add paste');
     }
   };
 
   // Delete single paste
   const deletePaste = async (id: string) => {
     try {
+      // Find the paste to check if it's an image
+      const paste = pastes.find((p) => p.id === id);
+      if (paste?.type === 'image') {
+        // Delete image from storage
+        const { error: storageError } = await deleteImage(paste.content);
+        if (storageError) {
+          console.error('Failed to delete image from storage:', storageError);
+        }
+      }
+
       const { error: deleteError } = await supabase
         .from('pastes')
         .delete()
@@ -106,6 +125,15 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
   // Clear all pastes
   const clearAll = async () => {
     try {
+      // Delete all images from storage first
+      const imagePastes = pastes.filter((p) => p.type === 'image');
+      if (imagePastes.length > 0) {
+        const { error: storageError } = await deleteRoomImages(pin);
+        if (storageError) {
+          console.error('Failed to delete some images from storage:', storageError);
+        }
+      }
+
       const { error: deleteError } = await supabase
         .from('pastes')
         .delete()
@@ -118,6 +146,44 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
     } catch {
       toast.error('Failed to clear pastes');
     }
+  };
+
+  // Export pastes
+  const exportPastes = (format: 'json' | 'txt', order: 'newest' | 'oldest') => {
+    const sorted = order === 'oldest' ? [...pastes].reverse() : pastes;
+
+    let content: string;
+    let filename: string;
+    let mimeType: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(
+        sorted.map((p) => ({ 
+          content: p.content, 
+          type: p.type,
+          created_at: p.created_at 
+        })),
+        null,
+        2
+      );
+      filename = `clypsync-${pin}.json`;
+      mimeType = 'application/json';
+    } else {
+      // Text export - only include text pastes, skip images
+      const textPastes = sorted.filter((p) => p.type === 'text');
+      content = textPastes.map((p) => p.content).join('\n\n===\n\n');
+      filename = `clypsync-${pin}.txt`;
+      mimeType = 'text/plain';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported as ${filename}`);
   };
 
   // Setup real-time subscription
@@ -181,6 +247,38 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
             </p>
           </div>
           <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={pastes.length === 0}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>JSON</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => exportPastes('json', 'newest')}>
+                      Newest First
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportPastes('json', 'oldest')}>
+                      Oldest First
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Text</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => exportPastes('txt', 'newest')}>
+                      Newest First
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportPastes('txt', 'oldest')}>
+                      Oldest First
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" disabled={pastes.length === 0}>
@@ -212,7 +310,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
 
       {/* Main Content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 space-y-6">
-        <PasteInput onSubmit={addPaste} />
+        <PasteInput onSubmit={addPaste} roomCode={pin} />
 
         <div className="border-t pt-6">
           <h2 className="text-sm font-medium text-muted-foreground mb-4">

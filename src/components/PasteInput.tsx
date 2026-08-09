@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Send, ClipboardPaste, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
+import { Send, ClipboardPaste, Image as ImageIcon, FileText, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,12 +22,14 @@ interface PasteInputProps {
 export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   const charCount = content.length;
   const isOverLimit = charCount > MAX_CHARS;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
 
   const handleImageUpload = async (file: File) => {
     setIsSubmitting(true);
@@ -61,6 +63,50 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFiles = async (files: FileList) => {
+    for (const file of Array.from(files)) {
+      if (file.type.startsWith('image/')) {
+        await handleImageUpload(file);
+      } else {
+        await handleDocumentUpload(file);
+      }
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter.current += 1;
+    if (!disabled && !isSubmitting) {
+      setIsDragActive(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragActive(false);
+    if (disabled || isSubmitting) return;
+    handleFiles(files);
   };
 
   const handleSubmit = async () => {
@@ -135,7 +181,13 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
 
   return (
     <div className="space-y-3">
-      <div className="relative">
+      <div
+        className={`relative rounded-md ${isDragActive ? 'ring-2 ring-primary' : ''}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Textarea
           placeholder="Paste or type text here..."
           value={content}
@@ -145,6 +197,12 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
           disabled={disabled || isSubmitting}
           className="min-h-[120px] resize-none pr-20"
         />
+        {isDragActive && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary bg-background/90">
+            <Upload className="h-6 w-6 text-primary" />
+            <p className="text-sm font-medium text-primary">Drop image or document to upload</p>
+          </div>
+        )}
         <div className="absolute top-2 right-2 flex gap-1">
           <input
             type="file"
@@ -197,7 +255,7 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Press Ctrl+Enter to send · Paste image with Ctrl+V</span>
+        <span>Press Ctrl+Enter to send · Paste image with Ctrl+V · Drag files to upload</span>
         <span className={isOverLimit ? 'text-destructive font-medium' : ''}>
           {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
         </span>

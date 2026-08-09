@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check, Trash2, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { Copy, Check, Trash2, ExternalLink, Link as LinkIcon, FileText, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,15 +27,21 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCopyImageUrl = async () => {
+  const handleCopyLink = async (label: string) => {
     try {
       await navigator.clipboard.writeText(paste.content);
       setUrlCopied(true);
-      toast.success('Image URL copied!');
+      toast.success(`${label} link copied!`);
       setTimeout(() => setUrlCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy URL');
+      toast.error('Failed to copy link');
     }
+  };
+
+  const formatFileSize = (bytes?: number | null) => {
+    if (!bytes) return '';
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleCopyImage = async () => {
@@ -72,6 +78,7 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
   });
 
   const isImage = paste.type === 'image';
+  const isDocument = paste.type === 'document';
 
   return (
     <Card>
@@ -102,6 +109,25 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
                   />
                 </a>
               )
+            ) : isDocument ? (
+              <a
+                href={paste.content}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-md border p-3 hover:bg-muted transition-colors"
+              >
+                <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {paste.file_name || 'Document'}
+                  </p>
+                  {paste.file_size ? (
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(paste.file_size)}
+                    </p>
+                  ) : null}
+                </div>
+              </a>
             ) : (
               <p className="text-sm whitespace-pre-wrap break-words">
                 {paste.content}
@@ -130,9 +156,45 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleCopyImageUrl}
+                  onClick={() => handleCopyLink('Image')}
                   className="h-9 w-9"
                   title="Copy image URL"
+                >
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <LinkIcon className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => window.open(paste.content, '_blank')}
+                  className="h-9 w-9"
+                  title="Open in new tab"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </>
+            ) : isDocument ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  asChild
+                  className="h-9 w-9"
+                  title="Download"
+                >
+                  <a href={paste.content} download={paste.file_name || undefined}>
+                    <Download className="h-4 w-4" />
+                  </a>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleCopyLink('Document')}
+                  className="h-9 w-9"
+                  title="Copy document link"
                 >
                   {urlCopied ? (
                     <Check className="h-4 w-4 text-green-500" />

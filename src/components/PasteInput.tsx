@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Send, ClipboardPaste, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Send, ClipboardPaste, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { uploadImage } from '@/lib/supabase';
+import { uploadImage, uploadDocument } from '@/lib/supabase';
 
-const MAX_CHARS = 10000;
+const MAX_CHARS = 500000;
 
 interface PasteInputProps {
-  onSubmit: (content: string, type: 'text' | 'image') => Promise<void>;
+  onSubmit: (
+    content: string,
+    type: 'text' | 'image' | 'document',
+    meta?: { fileName?: string; fileSize?: number }
+  ) => Promise<void>;
   disabled?: boolean;
   roomCode: string;
 }
@@ -23,6 +27,7 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
   const isOverLimit = charCount > MAX_CHARS;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (file: File) => {
     setIsSubmitting(true);
@@ -36,6 +41,23 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
       toast.success('Image uploaded!');
     } catch {
       toast.error('Failed to upload image');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDocumentUpload = async (file: File) => {
+    setIsSubmitting(true);
+    try {
+      const { url, fileName, fileSize, error } = await uploadDocument(file, roomCode);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      await onSubmit(url, 'document', { fileName, fileSize });
+      toast.success('Document uploaded!');
+    } catch {
+      toast.error('Failed to upload document');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +83,17 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
     // Reset input so same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDocumentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleDocumentUpload(file);
+    }
+    // Reset input so same file can be selected again
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
     }
   };
 
@@ -130,6 +163,24 @@ export function PasteInput({ onSubmit, disabled, roomCode }: PasteInputProps) {
             title="Upload image"
           >
             <ImageIcon className="h-4 w-4" />
+          </Button>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            ref={documentInputRef}
+            onChange={handleDocumentSelect}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => documentInputRef.current?.click()}
+            disabled={disabled || isSubmitting}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Upload document"
+          >
+            <FileText className="h-4 w-4" />
           </Button>
           <Button
             type="button"

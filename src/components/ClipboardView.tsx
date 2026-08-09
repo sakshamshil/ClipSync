@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PasteInput } from './PasteInput';
 import { PasteList } from './PasteList';
-import { supabase, deleteImage, deleteRoomImages } from '@/lib/supabase';
+import { supabase, deleteImage, deleteRoomImages, deleteDocument, deleteRoomDocuments } from '@/lib/supabase';
 import { APP_NAME } from '@/lib/constants';
 import type { Paste } from '@/types';
 
@@ -73,30 +73,48 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
   }, [pin]);
 
   // Add new paste
-  const addPaste = async (content: string, type: 'text' | 'image') => {
+  const addPaste = async (
+    content: string,
+    type: 'text' | 'image' | 'document',
+    meta?: { fileName?: string; fileSize?: number }
+  ) => {
     try {
-      const { error: insertError } = await supabase
-        .from('pastes')
-        .insert({ room_code: pin, content, type });
+      const { error: insertError } = await supabase.from('pastes').insert({
+        room_code: pin,
+        content,
+        type,
+        file_name: meta?.fileName,
+        file_size: meta?.fileSize,
+      });
 
       if (insertError) throw insertError;
 
-      toast.success(type === 'image' ? 'Image uploaded!' : 'Paste added!');
+      toast.success(
+        type === 'image' ? 'Image uploaded!' : type === 'document' ? 'Document uploaded!' : 'Paste added!'
+      );
     } catch {
-      toast.error(type === 'image' ? 'Failed to upload image' : 'Failed to add paste');
+      toast.error(
+        type === 'image' ? 'Failed to upload image' : type === 'document' ? 'Failed to upload document' : 'Failed to add paste'
+      );
     }
   };
 
   // Delete single paste
   const deletePaste = async (id: string) => {
     try {
-      // Find the paste to check if it's an image
+      // Find the paste to check if it's an image or document
       const paste = pastes.find((p) => p.id === id);
       if (paste?.type === 'image') {
         // Delete image from storage
         const { error: storageError } = await deleteImage(paste.content);
         if (storageError) {
           console.error('Failed to delete image from storage:', storageError);
+        }
+      } else if (paste?.type === 'document') {
+        // Delete document from storage
+        const { error: storageError } = await deleteDocument(paste.content);
+        if (storageError) {
+          console.error('Failed to delete document from storage:', storageError);
         }
       }
 
@@ -117,12 +135,20 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
   // Clear all pastes
   const clearAll = async () => {
     try {
-      // Delete all images from storage first
+      // Delete all images and documents from storage first
       const imagePastes = pastes.filter((p) => p.type === 'image');
       if (imagePastes.length > 0) {
         const { error: storageError } = await deleteRoomImages(pin);
         if (storageError) {
           console.error('Failed to delete some images from storage:', storageError);
+        }
+      }
+
+      const documentPastes = pastes.filter((p) => p.type === 'document');
+      if (documentPastes.length > 0) {
+        const { error: storageError } = await deleteRoomDocuments(pin);
+        if (storageError) {
+          console.error('Failed to delete some documents from storage:', storageError);
         }
       }
 
@@ -150,10 +176,12 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
 
     if (format === 'json') {
       content = JSON.stringify(
-        sorted.map((p) => ({ 
-          content: p.content, 
+        sorted.map((p) => ({
+          content: p.content,
           type: p.type,
-          created_at: p.created_at 
+          file_name: p.file_name ?? undefined,
+          file_size: p.file_size ?? undefined,
+          created_at: p.created_at,
         })),
         null,
         2
@@ -161,7 +189,7 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
       filename = `clypsync-${pin}.json`;
       mimeType = 'application/json';
     } else {
-      // Text export - only include text pastes, skip images
+      // Text export - only include text pastes, skip images and documents
       const textPastes = sorted.filter((p) => p.type === 'text');
       content = textPastes.map((p) => p.content).join('\n\n===\n\n');
       filename = `clypsync-${pin}.txt`;
@@ -242,7 +270,8 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
                 {(() => {
                   const textCount = pastes.filter((p) => p.type === 'text').length;
                   const imageCount = pastes.filter((p) => p.type === 'image').length;
-                  return `${pastes.length} ${pastes.length === 1 ? 'paste' : 'pastes'}${textCount > 0 ? ` · ${textCount} text` : ''}${imageCount > 0 ? ` · ${imageCount} ${imageCount === 1 ? 'image' : 'images'}` : ''}`;
+                  const documentCount = pastes.filter((p) => p.type === 'document').length;
+                  return `${pastes.length} ${pastes.length === 1 ? 'paste' : 'pastes'}${textCount > 0 ? ` · ${textCount} text` : ''}${imageCount > 0 ? ` · ${imageCount} ${imageCount === 1 ? 'image' : 'images'}` : ''}${documentCount > 0 ? ` · ${documentCount} ${documentCount === 1 ? 'document' : 'documents'}` : ''}`;
                 })()}
               </p>
             )}

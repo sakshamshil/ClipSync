@@ -221,7 +221,12 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
           filter: `room_code=eq.${pin}`,
         },
         (payload) => {
-          setPastes((prev) => [payload.new as Paste, ...prev]);
+          setPastes((prev) => {
+            if (prev.some((p) => p.id === (payload.new as Paste).id)) {
+              return prev;
+            }
+            return [payload.new as Paste, ...prev];
+          });
         }
       )
       .on(
@@ -237,9 +242,28 @@ export function ClipboardView({ pin, onLeaveRoom }: ClipboardViewProps) {
           fetchPastes();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Re-sync on every (re)connect, so pastes missed while the
+        // socket was down (sleep, backgrounded tab, network drop) show up
+        // without a manual refresh.
+        if (status === 'SUBSCRIBED') {
+          fetchPastes();
+        }
+      });
+
+    // Belt-and-suspenders: some mobile browsers suspend the socket while
+    // backgrounded and don't reconnect promptly on their own.
+    const handleReconnectCheck = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPastes();
+      }
+    };
+    document.addEventListener('visibilitychange', handleReconnectCheck);
+    window.addEventListener('online', handleReconnectCheck);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleReconnectCheck);
+      window.removeEventListener('online', handleReconnectCheck);
       supabase.removeChannel(channel);
     };
   }, [pin, fetchPastes]);

@@ -44,6 +44,15 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // The HTML `download` attribute is ignored for cross-origin links (all
+  // Supabase Storage URLs), so force it server-side via Supabase's own
+  // download query param instead of relying on the attribute alone.
+  const getDownloadHref = (url: string, fileName?: string | null) => {
+    const separator = url.includes('?') ? '&' : '?';
+    const suffix = fileName ? `download=${encodeURIComponent(fileName)}` : 'download';
+    return `${url}${separator}${suffix}`;
+  };
+
   const handleCopyImage = async () => {
     try {
       const response = await fetch(paste.content);
@@ -185,7 +194,12 @@ export function PasteItem({ paste, onCopy, onDelete }: PasteItemProps) {
                   className="h-9 w-9"
                   title="Download"
                 >
-                  <a href={paste.content} download={paste.file_name || undefined}>
+                  <a
+                    href={getDownloadHref(paste.content, paste.file_name)}
+                    download={paste.file_name || undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Download className="h-4 w-4" />
                   </a>
                 </Button>
